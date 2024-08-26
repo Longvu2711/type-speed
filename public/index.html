@@ -15,9 +15,8 @@
       font-size: 18px;
       line-height: 1.5;
     }
-    .word {
+    .char {
       display: inline;
-      margin-right: 5px;
     }
     .correct {
       color: black;
@@ -28,40 +27,75 @@
     .untyped {
       color: grey;
     }
+    #result {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .control-panel {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <h1>Typing Speed Test</h1>
+  <div class="control-panel">
+    <button id="generate-text">Generate Random Text</button>
+    <label>
+      <input type="checkbox" id="uppercase-toggle"> Uppercase
+    </label>
+  </div>
   <div id="text-sample" class="text-sample">
-    <!-- Sample text will be rendered here -->
   </div>
   <textarea id="text-input" placeholder="Start typing here..."></textarea>
-  <button id="submit-btn">Submit</button>
-  <p id="result"></p>
+  <p id="result">Typing Speed: 0 WPM | Accuracy: 0%</p>
 
   <script>
-    // Sample text with 20 words
-    const sampleText = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How razorback-jumping frogs can level six piqued gymnasts.";
-    const words = sampleText.split(' ');
+    const sampleLength = 20;
+    const wordsArray = "The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs How razorback jumping frogs can level six piqued gymnasts".split(' ');
+
+    function getRandomText(length) {
+      let text = '';
+      while (text.split(' ').length < length) {
+        text += wordsArray[Math.floor(Math.random() * wordsArray.length)] + ' ';
+      }
+      return text.trim().replace(/\./g, '');
+    }
 
     function renderSampleText() {
-      const textSample = document.getElementById('text-sample');
-      textSample.innerHTML = words.map(word => `<span class="word untyped">${word}</span>`).join(' ');
+      const sampleText = document.getElementById('text-sample');
+      const text = getRandomText(sampleLength);
+      const isUppercase = document.getElementById('uppercase-toggle').checked;
+      sampleText.innerHTML = text.split('').map(char => `<span class="char untyped">${isUppercase ? char.toUpperCase() : char}</span>`).join('');
     }
 
     function updateTextSample(userInput) {
       const textSample = document.getElementById('text-sample');
-      const spans = textSample.querySelectorAll('.word');
+      const spans = textSample.querySelectorAll('.char');
+      const inputChars = userInput.split('');
+      let correctChars = 0;
+      let typedChars = 0;
 
-      let inputWords = userInput.split(' ');
       for (let i = 0; i < spans.length; i++) {
-        if (inputWords[i] === undefined) {
-          spans[i].className = 'word untyped';
-        } else if (inputWords[i] === words[i]) {
-          spans[i].className = 'word correct';
+        if (inputChars[i] === undefined) {
+          spans[i].className = 'char untyped';
+        } else if (inputChars[i] === spans[i].textContent) {
+          spans[i].className = 'char correct';
+          correctChars++;
+          typedChars++;
         } else {
-          spans[i].className = 'word incorrect';
+          spans[i].className = 'char incorrect';
+          typedChars++;
         }
+      }
+
+      if (typedChars > 0) {
+        const accuracy = (correctChars / typedChars * 100).toFixed(2); // Accuracy in percentage
+        const endTime = new Date().getTime();
+        const timeTaken = (endTime - window.startTime) / 60000; // time in minutes
+        const speed = (correctChars / timeTaken).toFixed(2); // words per minute
+        document.getElementById('result').textContent = `Typing Speed: ${speed} WPM | Accuracy: ${accuracy}%`;
+      } else {
+        document.getElementById('result').textContent = `Typing Speed: 0 WPM | Accuracy: 0%`;
       }
     }
 
@@ -69,27 +103,18 @@
       updateTextSample(e.target.value);
     });
 
-    document.getElementById('submit-btn').addEventListener('click', async () => {
-      const endTime = new Date().getTime();
-      const text = document.getElementById('text-input').value;
-
-      const response = await fetch('/calculate-speed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startTime: window.startTime,
-          endTime,
-          text,
-        }),
-      });
-
-      const data = await response.json();
-      document.getElementById('result').textContent = `Typing Speed: ${data.typingSpeed} WPM`;
+    document.getElementById('generate-text').addEventListener('click', () => {
+      renderSampleText();
+      document.getElementById('text-input').value = '';
+      window.startTime = new Date().getTime();
     });
 
-    // Initialize
+    document.getElementById('uppercase-toggle').addEventListener('change', () => {
+      renderSampleText();
+      document.getElementById('text-input').value = '';
+      window.startTime = new Date().getTime();
+    });
+
     renderSampleText();
     window.startTime = new Date().getTime();
   </script>
